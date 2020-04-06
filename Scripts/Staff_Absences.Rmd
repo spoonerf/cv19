@@ -55,7 +55,7 @@ scen <- scen_in %>%
   mutate(Doubling_lag = c(NA, Doubling[-length(Doubling)]), Rt50_lag = c(NA, ImpMedian[-length(ImpMedian)]), Rt75_lag = c(NA, Imp75[-length(Imp75)]), Doubling_pcnt = (Doubling/Doubling_lag), Rt50_pcnt = (ImpMedian/Rt50_lag), Rt75_pcnt = (Imp75/Rt75_lag)) #%>%   select(Date, Doubling_pcnt, Rt50_pcnt, Rt75_pcnt)
 
 
-scen[1,8:10] <- scen[2,8:10]
+scen[1,c("Doubling_pcnt","Rt50_pcnt","Rt75_pcnt")] <- scen[2,c("Doubling_pcnt","Rt50_pcnt","Rt75_pcnt")]
 
 
 scen$RtDoubling <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Doubling_pcnt)
@@ -93,7 +93,7 @@ cov_long <-
 
 ggplot(cov_long %>% filter(date > as.Date("2020-03-19")), aes(x = date, y = value, group = name))+
   geom_point()+
-  geom_smooth()+
+  geom_smooth(se=F)+
   facet_wrap(~name)+
   ggtitle(paste0("Rt for ", hosp))
 
@@ -274,7 +274,7 @@ num_plot <-
   ) +
   #geom_point(aes(shape = data_type), size = 1)+
   geom_point() +
-  geom_smooth(aes(linetype = name)) +
+  geom_smooth(aes(linetype = name), se = F) +
   geom_vline(xintercept = as.Date("2020-04-01"), linetype = "dotted") +
   facet_wrap( ~ group) +
   ylab("Number Staff Absent") +
@@ -303,7 +303,7 @@ All Staff Plot
 all_staff_plot <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = value, col = model, group = interaction(model,name)))+
  #geom_point(aes(shape = data_type), size = 1)+
   geom_point()+
-  geom_smooth(aes(linetype = name))+
+  geom_smooth(aes(linetype = name), se = F)+
   geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
   ylab("Number Staff Absent")+
   xlab("Date")+
@@ -329,7 +329,7 @@ prop_pl_df <- group_df_lag %>%
 
 prop_plot <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
   geom_point()+
-  geom_smooth(aes(linetype = name))+
+  geom_smooth(aes(linetype = name), se = F)+
   geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
   facet_wrap(~group)+
   ylab("Proportion Staff Absent %")+
@@ -351,12 +351,12 @@ All Staff Prop
 ```{r}
 total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
 
-all_staff$prop_value <- all_staff$value /total_staff
+all_staff$prop_value <- (all_staff$value /total_staff) *100
 
 
 all_props <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
   geom_point()+
-  geom_smooth(aes(linetype = name))+
+  geom_smooth(aes(linetype = name), se = F)+
   geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
   ylab("Proportion Staff Absent %")+
   xlab("Date")+
