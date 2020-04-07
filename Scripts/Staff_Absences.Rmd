@@ -20,14 +20,14 @@ library(tidyr)
 ```
 
 ```{r}
-hosp <- "RDE" #Name of hospital for plot labels
+hosp <- "NDDH" #Name of hospital for plot labels
+
+in_file <- "Staff_Absences_NDDH_20200406.xlsx" #excel file with data
 
 end_date <- as.Date("2020-04-16")  #End date for projections
 
 in_dir <- "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
 
-in_file <- "Staff_Absences_RDE_20200407.xlsx" #excel file with data
- 
 scen_data <- "Devon_projection.RData" #scenario rates
 load(paste0(in_dir,scen_data))
 scen_in <- Devon_projection
@@ -57,56 +57,64 @@ first_date <- as.Date(max(Daily_Absences_All_Staff$Date))
 
 ```
 
-Scenario Data
+Scenario Scaling Function
 ```{r}
-scen <- scen_in %>% 
-  filter(date <= end_date & date > first_date) %>% 
-  mutate(Rt75_lag = c(NA, Rt75[-length(Rt75)]), Rob2_5_lag = c(NA, Rob2_5[-length(Rob2_5)]), Rob50_lag = c(NA,Rob50[-length(Rob50)]),Rob97_5_lag = c(NA, Rob97_5[-length(Rob97_5)]),Rt75_pcnt = (Rt75/Rt75_lag), Rob2_5_pcnt = (Rob2_5/Rob2_5_lag),Rob50_pcnt = Rob50/Rob50_lag ,Rob97_5_pcnt = (Rob97_5/Rob97_5_lag)) #%>%   select(Date, Doubling_pcnt, Rt50_pcnt, Rt75_pcnt)
-
-
-scen[1,c("Rt75_pcnt","Rob2_5_pcnt","Rob50_pcnt","Rob97_5_pcnt")] <- scen[2,c("Rt75_pcnt","Rob2_5_pcnt","Rob50_pcnt","Rob97_5_pcnt")]
-
-
-scen$Rt75 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rt75_pcnt)
-
-scen$Rob2_5 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob2_5_pcnt)
-
-scen$Rob50 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob50_pcnt)
-
-scen$Rob97_5 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob97_5_pcnt)
-
+scenario_scaler <- function(scenario_name, name_out,real_data, start_date_model, end_date_model){
+  
+  scen <- scen_in %>% 
+    select(date, {{scenario_name}}) %>% 
+    filter(date >= {{start_date_model}} & date <= {{end_date_model}}) %>% 
+    mutate(scen_lag = c(NA, head({{scenario_name}},-1)))
+  
+  scen$scen_lag[1] <- scen$scen_lag[2]
+  
+  scen <- scen %>% 
+    mutate(scen_pcnt = {{scenario_name}}/scen_lag, 
+           scen_rt = cumprod(scen_pcnt),
+           scen_model_pred = tail(real_data,1) * scen_rt) 
+  
+  df_out <- data.frame(dates_out = seq(start_date_model - (length(real_data)-1), end_date_model, by = "day"),
+                       pred_out = c(head(real_data,-1), scen$scen_model_pred),
+                       model_name = name_out)
+  return(df_out)  
+  
+}
 
 ```
 
+Scaling scenarios
 ```{r}
-dates <-
-  seq(max(as.Date(Daily_Absences_All_Staff$Date)), end_date, by = "day")
+dev2_5 <- scenario_scaler(scenario_name = Rob2_5,
+                name_out = "Dev2.5",
+                real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+                start_date_model = first_date, 
+                end_date_model = end_date)
 
-cov_df <-
-  data.frame(
-    date = c(as.Date(Daily_Absences_All_Staff$Date), dates[-1]),
-    Nat75 = c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$Rt75
-    ),
-    Dev2.5 =  c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$Rob2_5
-    ),
-    Dev50 =  c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$Rob50
-    ),
-      Dev97.5 =  c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$Rob97_5
-    )
-  )
+dev50 <- scenario_scaler(scenario_name = Rob50,
+                name_out = "Dev50",
+                real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+                start_date_model = first_date, 
+                end_date_model = end_date)
+
+dev97_5 <- scenario_scaler(scenario_name = Rob97_5,
+                name_out = "Dev97.5",
+                real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+                start_date_model = first_date, 
+                end_date_model = end_date)
+
+nat75 <- scenario_scaler(scenario_name = Rt75,
+                name_out = "Nat75",
+                real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+                start_date_model = first_date, 
+                end_date_model = end_date)
+
+cov_long <- rbind(dev2_5, dev50, dev97_5, nat75)
+colnames(cov_long) <- c("date", "value", "name")
+
 ```
 
+
 ```{r}
-cov_long <-
-  cov_df %>% pivot_longer(., c("Nat75", "Dev2.5", "Dev50", "Dev97.5"))
 
 ggplot(cov_long %>% filter(date > as.Date("2020-03-19")), aes(x = date, y = value, group = name, col = name))+
   geom_line(aes(linetype = name, color = name, size = name))+
