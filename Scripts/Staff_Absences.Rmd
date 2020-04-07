@@ -20,23 +20,29 @@ library(tidyr)
 ```
 
 ```{r}
-hosp <- "NDDH" #Name of hospital for plot labels
+hosp <- "RDE" #Name of hospital for plot labels
 
-end_date <- as.Date("2020-04-13")  #End date for projections
+end_date <- as.Date("2020-04-16")  #End date for projections
 
-in_file <- "Data/Data_from_Claire/Staff_Absences_NDDH_20200403.xlsx" #excel file with data
+in_dir <- "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
+
+in_file <- "Staff_Absences_RDE_20200407.xlsx" #excel file with data
  
-scen_data <- "Data/Data_from_Claire/ScenariosND.RData" #scenario rates
-load(scen_data)
-scen_in <- ScenariosND
+scen_data <- "Devon_projection.RData" #scenario rates
+load(paste0(in_dir,scen_data))
+scen_in <- Devon_projection
+
+out_dir <- paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
 
 ```
 
 Loading Data
 ```{r}
 Daily_Absences_All_Staff <-
-  read_excel(
-    in_file,
+  read_excel(paste0(
+    in_dir,
+    in_file
+  ),
     "Daily_Absences_All_Staff",
     col_names = TRUE
   ) %>% 
@@ -46,23 +52,30 @@ Daily_Absences_All_Staff <-
 Daily_Absences_All_Staff$Staff_Absences_NoCovid_Perc = Daily_Absences_All_Staff$Staff_Absences_Perc -
   Daily_Absences_All_Staff$Staff_Absences_Covid_Perc
 
+first_date <- as.Date(max(Daily_Absences_All_Staff$Date))
+
+
 ```
 
 Scenario Data
 ```{r}
 scen <- scen_in %>% 
-  filter(Date <= end_date) %>% 
-  mutate(Doubling_lag = c(NA, Doubling[-length(Doubling)]), Rt50_lag = c(NA, ImpMedian[-length(ImpMedian)]), Rt75_lag = c(NA, Imp75[-length(Imp75)]), Doubling_pcnt = (Doubling/Doubling_lag), Rt50_pcnt = (ImpMedian/Rt50_lag), Rt75_pcnt = (Imp75/Rt75_lag)) #%>%   select(Date, Doubling_pcnt, Rt50_pcnt, Rt75_pcnt)
+  filter(date <= end_date & date > first_date) %>% 
+  mutate(Rt75_lag = c(NA, Rt75[-length(Rt75)]), Rob2_5_lag = c(NA, Rob2_5[-length(Rob2_5)]), Rob50_lag = c(NA,Rob50[-length(Rob50)]),Rob97_5_lag = c(NA, Rob97_5[-length(Rob97_5)]),Rt75_pcnt = (Rt75/Rt75_lag), Rob2_5_pcnt = (Rob2_5/Rob2_5_lag),Rob50_pcnt = Rob50/Rob50_lag ,Rob97_5_pcnt = (Rob97_5/Rob97_5_lag)) #%>%   select(Date, Doubling_pcnt, Rt50_pcnt, Rt75_pcnt)
 
 
-scen[1,c("Doubling_pcnt","Rt50_pcnt","Rt75_pcnt")] <- scen[2,c("Doubling_pcnt","Rt50_pcnt","Rt75_pcnt")]
+scen[1,c("Rt75_pcnt","Rob2_5_pcnt","Rob50_pcnt","Rob97_5_pcnt")] <- scen[2,c("Rt75_pcnt","Rob2_5_pcnt","Rob50_pcnt","Rob97_5_pcnt")]
 
-
-scen$RtDoubling <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Doubling_pcnt)
-
-scen$Rt50 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rt50_pcnt)
 
 scen$Rt75 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rt75_pcnt)
+
+scen$Rob2_5 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob2_5_pcnt)
+
+scen$Rob50 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob50_pcnt)
+
+scen$Rob97_5 <- tail(Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,1) * cumprod(scen$Rob97_5_pcnt)
+
+
 ```
 
 ```{r}
@@ -72,30 +85,37 @@ dates <-
 cov_df <-
   data.frame(
     date = c(as.Date(Daily_Absences_All_Staff$Date), dates[-1]),
-    Doubling = c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$RtDoubling
-    ),
-    Rt50 =  c(
-      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
-      scen$Rt50
-    ),
-    Rt75 =  c(
+    Nat75 = c(
       Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
       scen$Rt75
+    ),
+    Dev2.5 =  c(
+      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+      scen$Rob2_5
+    ),
+    Dev50 =  c(
+      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+      scen$Rob50
+    ),
+      Dev97.5 =  c(
+      Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
+      scen$Rob97_5
     )
   )
 ```
 
 ```{r}
 cov_long <-
-  cov_df %>% pivot_longer(., c("Doubling", "Rt50", "Rt75"))
+  cov_df %>% pivot_longer(., c("Nat75", "Dev2.5", "Dev50", "Dev97.5"))
 
-ggplot(cov_long %>% filter(date > as.Date("2020-03-19")), aes(x = date, y = value, group = name))+
-  geom_point()+
-  geom_smooth(se=F)+
-  facet_wrap(~name)+
-  ggtitle(paste0("Rt for ", hosp))
+ggplot(cov_long %>% filter(date > as.Date("2020-03-19")), aes(x = date, y = value, group = name, col = name))+
+  geom_line(aes(linetype = name, color = name, size = name))+
+  geom_point(data = cov_long %>% filter(date <= first_date & date > as.Date("2020-03-19")),col = "black")+
+  ggtitle(paste0("Rt for ", hosp))+
+  scale_linetype_manual(values = c("twodash", "solid", "dotted", "solid") )+
+  scale_color_manual(values = c(rep("#F8766D", 3), "#00BFC4"))+
+  scale_size_manual(values = c(1,1.5,1,1.5))
+  
 
 ```
 
@@ -123,7 +143,7 @@ no_cov_abs <- no_cov_abs %>%
 Staff Group Data
 ```{r}
 
-Number_Staff_By_Group <- read_excel(in_file, "Number_Staff_By_Group", col_names = TRUE) %>% 
+Number_Staff_By_Group <- read_excel(paste0(in_dir,in_file), "Number_Staff_By_Group", col_names = TRUE) %>% 
   select(Group, FTE, Number_Staff) %>% 
   filter(!Group %in% c("Students", "Total"))
 
@@ -131,12 +151,15 @@ Number_Staff_By_Group$FTE <- as.numeric(Number_Staff_By_Group$FTE)
 
 Number_Staff_By_Group$Number_Staff <- as.numeric(Number_Staff_By_Group$Number_Staff)
 
+staff_num <- sum(Number_Staff_By_Group$Number_Staff)
+group_max <- max(Number_Staff_By_Group$Number_Staff)
+
 ```
 
 Group Weights
 
 ```{r}
-Absences_By_Group <- read_excel(in_file, "Absences_By_Group",col_names = TRUE) %>% 
+Absences_By_Group <- read_excel(paste0(in_dir,in_file), "Absences_By_Group",col_names = TRUE) %>% 
   filter(!Group %in% c("Total", "Students")) %>% 
   left_join(., Number_Staff_By_Group, by = "Group") %>% 
   mutate(Staff_Absences_Perc = as.numeric(Staff_Absences_Perc)/100,
@@ -209,23 +232,26 @@ group_df_lag <- group_df %>%
   mutate(
     nrows = n(),
     end_lag = nrows[1] - 14 ,
-    cov_staff_return = ifelse(nrows > 14, c(rep(0, 14), cov_staff_out[1:end_lag]), 0),
-    cov_lag_staff_out = cov_staff_out - cov_staff_return,
-    cov_lag_prop = (cov_lag_staff_out / num_staff) * 100
-  ) %>%
-  ungroup() %>%
-  mutate(
-    total_staff_out = cov_lag_staff_out + no_cov_staff_out,
-    total_prop_staff_out = (total_staff_out / num_staff) * 100
-  ) %>%
-  mutate(data_type = ifelse(date <= max(as.Date(
-    Daily_Absences_All_Staff$Date
-  )), "Real", "Estimate")) %>%
+    cov_staff_return = ifelse(nrows > 14, c(rep(0, 14), cov_staff_out[1:end_lag]), 0))
+
+
+###############Only getting returners from 14days after last data point
+group_df_lag$cov_staff_return <- ifelse(group_df_lag$date < first_date + 14, 0 ,group_df_lag$cov_staff_return)
+###############
+
+group_df_lag$cov_lag_staff_out <- group_df_lag$cov_staff_out - group_df_lag$cov_staff_return
+
+group_df_lag$cov_lag_prop <- (group_df_lag$cov_lag_staff_out / group_df_lag$num_staff) * 100
+
+group_df_lag$total_staff_out <- group_df_lag$cov_lag_staff_out + group_df_lag$no_cov_staff_out
+
+group_df_lag$total_prop_staff_out <- (group_df_lag$total_staff_out / group_df_lag$num_staff) * 100
+
+group_df_lag <- group_df_lag %>% 
   select(
     date,
     group,
     model,
-    data_type,
     cov_staff_out,
     cov_lag_staff_out,
     cov_staff_return,
@@ -244,8 +270,10 @@ Staff groups
 
 ```{r}
 num_pl_df <- data.frame(group_df_lag %>% 
-  select(date, group, model,total_staff_out, cov_lag_staff_out, data_type) %>% 
-  pivot_longer(., cols = c("total_staff_out", "cov_lag_staff_out")))
+  select(date, group, model,total_staff_out, cov_lag_staff_out) %>% 
+  pivot_longer(., cols = c("total_staff_out", "cov_lag_staff_out"))) %>% mutate(model = factor(model, levels = c("Nat75", "Dev50", "Dev2.5", "Dev97.5")))
+
+
 
 ```
 
@@ -254,7 +282,8 @@ All Staff
 ```{r}
 all_staff<- data.frame(num_pl_df %>% 
               group_by(date, model, name) %>% 
-              summarise(value = sum(value)) %>%               select(date, model,  name, value) %>% 
+              summarise(value = sum(value)) %>%               
+              select(date, model,  name, value) %>% 
               ungroup())
 ```
 
@@ -262,37 +291,70 @@ Group Plot
 
 ```{r}
 
-num_plot <-
-  ggplot(
-    num_pl_df %>% filter(date > as.Date("2020-03-19")),
+ymax <- ifelse(max(num_pl_df$value)> staff_num, staff_num, NA)
+
+num_plot_cov <-
+  ggplot(num_pl_df %>% 
+           filter(date > as.Date("2020-03-19") & name == "cov_lag_staff_out"),
     aes(
       x = date,
       y = value,
-      col = model,
-      group = interaction(model, group, name)
+      group = interaction(model, group)
     )
   ) +
-  #geom_point(aes(shape = data_type), size = 1)+
-  geom_point() +
-  geom_smooth(aes(linetype = name), se = F) +
-  geom_vline(xintercept = as.Date("2020-04-01"), linetype = "dotted") +
+  geom_line(aes(col = model, linetype = model, size = model)) +
+  geom_point(data = num_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap( ~ group) +
   ylab("Number Staff Absent") +
   xlab("Date") +
-  scale_linetype_discrete(name = "Absence Type", labels = c("Covid", "Total Absent")) +
-  #scale_shape_discrete(name = "Data Type", labels = c("Estimate", "Real"))+
-  scale_color_discrete(name = "Model",
-                       labels = c("Doubling", "Rt50", "Rt75")) +
-  #guides(col = guide_legend(reverse=TRUE))
+  theme(legend.title = element_blank()) +
+  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  theme_bw()+
+   scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  ylim(0,ymax)
+ 
+num_plot_cov
+
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
+
+```
+
+
+```{r}
+
+num_plot_all <-
+  ggplot(num_pl_df %>% 
+           filter(date > as.Date("2020-03-19") & name == "total_staff_out"),
+    aes(
+      x = date,
+      y = value,
+      group = interaction(model, group)
+    )
+  ) +
+  geom_line(aes(col = model, linetype = model, size = model)) +
+  geom_point(data = num_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
+  facet_wrap( ~ group) +
+  ylab("Number Staff Absent") +
+  xlab("Date") +
+  scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
+  ggtitle(paste0("Staff Numbers Absent (All) - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
   theme_bw() +
-  ggtitle(paste0("Staff Numbers Absent - ", hosp))
+  ylim(0,ymax)
+ 
+num_plot_all
 
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
 
-num_plot
-
-ggsave(paste0("Outputs/",hosp, "_",Sys.Date(),"_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
-
- num_pl_df %>% filter(model == "Rt50" & date == as.Date("2020-04-01") & name == "total_staff_out") %>% summarise(sum = sum(value))
 
 ```
 
@@ -300,49 +362,112 @@ ggsave(paste0("Outputs/",hosp, "_",Sys.Date(),"_Absences_Numbers_Staff_Groups.pn
 All Staff Plot
 ```{r}
 
-all_staff_plot <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = value, col = model, group = interaction(model,name)))+
- #geom_point(aes(shape = data_type), size = 1)+
-  geom_point()+
-  geom_smooth(aes(linetype = name), se = F)+
-  geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
+ymax <- ifelse(max(all_staff$value)> staff_num, staff_num, NA)
+
+
+all_staff_plot_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")& name == "cov_lag_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
+  geom_line(aes(linetype = model, size = model)) +
+  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
   ylab("Number Staff Absent")+
   xlab("Date")+
-  scale_linetype_discrete(name = "Absence Type", labels = c("Covid", "Total Absent"))+
-  scale_color_discrete(name = "Model", labels = c("Doubling", "Rt50","Rt75"))+
-  #guides(col = guide_legend(reverse=TRUE))
-  theme_bw()+
-  ggtitle(paste0("Staff Numbers Absent - ", hosp))
+  scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
+  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  theme_bw() +
+  ylim(0,ymax)
 
 
-all_staff_plot
+all_staff_plot_cov
 
-ggsave(paste0("Outputs/",hosp, "_",Sys.Date(),"_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
 
 ```
+
+
+```{r}
+
+all_staff_plot_total <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")& name == "total_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
+  geom_line(aes(linetype = model, size = model)) +
+  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
+  ylab("Number Staff Absent")+
+  xlab("Date")+
+  scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
+  ggtitle(paste0("Staff Numbers Absent (All) - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  theme_bw() +
+  ylim(0,ymax)
+
+
+all_staff_plot_total
+
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
+
+```
+
+
 
 Proportion Plots
 ```{r}
 
 prop_pl_df <- group_df_lag %>% 
-  select(date, group, model,total_prop_staff_out, cov_lag_prop, no_cov_prop_staff_out, data_type) %>% 
-  pivot_longer(., cols = c("total_prop_staff_out", "cov_lag_prop"))
+  select(date, group, model,total_prop_staff_out, cov_lag_prop, no_cov_prop_staff_out) %>% 
+  pivot_longer(., cols = c("total_prop_staff_out", "cov_lag_prop")) 
 
-prop_plot <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
-  geom_point()+
-  geom_smooth(aes(linetype = name), se = F)+
-  geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
+prop_pl_df$model <- factor(prop_pl_df$model, levels = c("Nat75", "Dev50", "Dev2.5", "Dev97.5"))
+
+prop_plot_cov <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & name == "cov_lag_prop"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
+  geom_line(aes(col = model, linetype = model, size = model)) +
+  geom_point(data = prop_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_prop") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap(~group)+
   ylab("Proportion Staff Absent %")+
   xlab("Date")+
-  scale_linetype_discrete(name = "Absence Type", labels = c("Covid", "Total Absent"))+
-  scale_color_discrete(name = "Model", labels = c("Doubling","Rt50","Rt75"))+
+ scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent - ", hosp))
+  ggtitle(paste0("Percentage Staff Absent due to COVID-19 - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  ylim(0,100)
 
 
-prop_plot
+prop_plot_cov
 
-ggsave(paste0("Outputs/",hosp, "_",Sys.Date(),"_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
+```
+
+```{r}
+
+prop_plot_all <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & name == "total_prop_staff_out"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
+  geom_line(aes(col = model, linetype = model, size = model)) +
+  geom_point(data = prop_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_prop_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
+  facet_wrap(~group)+
+  ylab("Proportion Staff Absent %")+
+  xlab("Date")+
+ scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
+  theme_bw()+
+  ggtitle(paste0("Percentage Staff Absent (All)- ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  ylim(0,100)
+
+
+prop_plot_all
+
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
 
 ```
 
@@ -354,15 +479,53 @@ total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
 all_staff$prop_value <- (all_staff$value /total_staff) *100
 
 
-all_props <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
-  geom_point()+
-  geom_smooth(aes(linetype = name), se = F)+
-  geom_vline(xintercept = as.Date("2020-04-01"),linetype = "dotted")+
-  ylab("Proportion Staff Absent %")+
+all_props_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name == "cov_lag_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
+  geom_line(aes(linetype = model, size = model)) +
+  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
+   ylab("Proportion Staff Absent %")+
   xlab("Date")+
-  scale_linetype_discrete(name = "Absence Type", labels = c("Covid", "Total Absent"))+
-  scale_color_discrete(name = "Model", labels = c("Doubling","Rt50","Rt75"))+
+  scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent - ", hosp))
+  ggtitle(paste0("Percentage Staff Absent - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  ylim(0,100)
 
-ggsave(paste0("Outputs/",hosp, "_",Sys.Date(),"_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
+all_props_cov
+
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
+
+
+```
+
+
+```{r}
+total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
+
+all_staff$prop_value <- (all_staff$value /total_staff) *100
+
+
+all_props_tot <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name == "total_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
+  geom_line(aes(linetype = model, size = model)) +
+  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_vline(xintercept = first_date, linetype = "dotted") +
+   ylab("Proportion Staff Absent %")+
+  xlab("Date")+
+  scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
+  scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  scale_size_manual(values = c(1.5,1.5,1,1))+
+  theme(legend.title = element_blank()) +
+  theme_bw()+
+  ggtitle(paste0("Percentage Staff Absent - ", hosp))+
+  labs(color = "", size = "", linetype= "")+
+  ylim(0,100)
+
+all_props_tot
+
+ggsave(paste0(out_dir,hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
+
+
+```
