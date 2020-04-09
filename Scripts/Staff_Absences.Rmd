@@ -1,13 +1,22 @@
 ---
-title: "Staff Absences - RDE"
 date: "`r Sys.Date()`"
 output: pdf_document
+params:
+  hospital: "NDDH"
+  in_file: "Staff_Absences_NDDH_20200408.xlsx"
+  image_ppi: 1000
+  end_date: !r as.Date("2020-04-16")
+  in_dir: "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
+  out_dir: !r paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
+  fig_width: 11.75
+  fig_height: 7
+title: "Staff Absences"
+subtitle: "`r params$hospital`"
 ---
 
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 4)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = params$fig_width, fig.height = params$fig_height)
 ```
 
 ```{r}
@@ -19,30 +28,38 @@ library(janitor)
 library(knitr)
 library(patchwork)
 library(tidyr)
+
 ```
 
 ```{r}
-hosp <- "RDE" #Name of hospital for plot labels
+#hosp <- "RDE" #Name of hospital for plot labels
 
-in_file <- "Staff_Absences_RDE_20200407.xlsx" #excel file with data
+#in_file <- "Staff_Absences_RDE_20200408.xlsx" #excel file with data
 
-end_date <- as.Date("2020-04-16")  #End date for projections
+#end_date <- as.Date("2020-04-16")  #End date for projections
 
-in_dir <- "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
+#in_dir <- "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
 
-scen_data <- "Devon_projection.RData" #scenario rates
-load(paste0(in_dir,scen_data))
+#scen_data <- "Devon_projection.RData" #scenario rates
+
+#out_dir <- paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
+
+#out_dir = here::here("Outputs/")
+
+#fig_width =  11.75
+#fig_height = 7
+
+load(paste0(params$in_dir, "Devon_projection.RData"))
 scen_in <- Devon_projection
 
-out_dir <- paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
-
-
-out_dir = here::here("Outputs/")
+if (!dir.exists(params$out_dir)){
+  dir.create(params$out_dir, recursive = T)
+}
 
 ```
 
 #### Modelled Forecasts\
-Staff Absences for `r hosp` under four modelled forecasts:
+Staff Absences for `r params$hospital` under four modelled forecasts:
 
 1. **NationalRt75** - based on outputs from the Imperial College model. The average (median) output from that model doesn’t seem to align to cases seen in NDDH which appear higher and closer to the Rt75 (the 75% percentile of the output distribution). This has been a good predictor of the number of cases over the past week
  
@@ -58,8 +75,8 @@ Staff Absences for `r hosp` under four modelled forecasts:
 ```{r}
 Daily_Absences_All_Staff <-
   read_excel(paste0(
-    in_dir,
-    in_file
+    params$in_dir,
+    params$in_file
   ),
     "Daily_Absences_All_Staff",
     col_names = TRUE
@@ -107,25 +124,25 @@ dev2_5 <- scenario_scaler(scenario_name = Rob2_5,
                 name_out = "Dev2.5",
                 real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
                 start_date_model = first_date, 
-                end_date_model = end_date)
+                end_date_model = params$end_date)
 
 dev50 <- scenario_scaler(scenario_name = Rob50,
                 name_out = "Dev50",
                 real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
                 start_date_model = first_date, 
-                end_date_model = end_date)
+                end_date_model = params$end_date)
 
 dev97_5 <- scenario_scaler(scenario_name = Rob97_5,
                 name_out = "Dev97.5",
                 real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
                 start_date_model = first_date, 
-                end_date_model = end_date)
+                end_date_model = params$end_date)
 
 nat75 <- scenario_scaler(scenario_name = Rt75,
                 name_out = "Nat75",
                 real_data = Daily_Absences_All_Staff$Staff_Absences_Covid_Perc,
                 start_date_model = first_date, 
-                end_date_model = end_date)
+                end_date_model = params$end_date)
 
 cov_long <- rbind(dev2_5, dev50, dev97_5, nat75)
 colnames(cov_long) <- c("date", "value", "name")
@@ -152,15 +169,16 @@ ggplot(cov_long %>%
                filter(date <= first_date &
                       date >as.Date("2020-03-19")),
              col = "black") +
-  ggtitle(paste0("Rt for ", hosp)) +
+  ggtitle(paste0("Rt for ", params$hospital)) +
   scale_linetype_manual(values = c("twodash", "solid", "dotted", "solid")) +
   scale_color_manual(values = c(rep("#F8766D", 3), "#00BFC4")) +
   scale_size_manual(values = c(1, 1.5, 1, 1.5))
 
 
 ```
+\newpage
 #### Staff Absence Data\
-Percentages of `r hosp` staff absences from `r min(Daily_Absences_All_Staff$Date)` to `r max(Daily_Absences_All_Staff$Date)`
+Percentages of `r params$hospital` staff absences from `r min(Daily_Absences_All_Staff$Date)` to `r max(Daily_Absences_All_Staff$Date)`
 
 
 ```{r Table of absences %, eval = TRUE}
@@ -175,7 +193,7 @@ kable(Daily_Absences_All_Staff %>%
 
 ```{r}
 
-Number_Staff_By_Group <- read_excel(paste0(in_dir,in_file), "Number_Staff_By_Group", col_names = TRUE) %>% 
+Number_Staff_By_Group <- read_excel(paste0(params$in_dir,params$in_file), "Number_Staff_By_Group", col_names = TRUE) %>% 
   select(Group, FTE, Number_Staff) %>% 
   filter(!Group %in% c("Students", "Total"))
 
@@ -191,7 +209,7 @@ group_max <- max(Number_Staff_By_Group$Number_Staff)
 
 ```{r Group Weights}
 staff_weights <-
-  read_excel(paste0(in_dir, in_file), "Absences_By_Group", col_names = TRUE) %>%
+  read_excel(paste0(params$in_dir, params$in_file), "Absences_By_Group", col_names = TRUE) %>%
   filter(!Group %in% c("Total", "Students")) %>%
   drop_na() %>%
   left_join(., Number_Staff_By_Group, by = "Group") %>%
@@ -219,7 +237,7 @@ staff_weights <-
 
 ```{r, Future Non Covid Absences}
 daily_abs_dates <-
-  seq(min(cov_long$date), end_date, by = "day")
+  seq(min(cov_long$date), params$end_date, by = "day")
 
 daily_abs <-
   c(
@@ -331,8 +349,7 @@ group_df_lag <- group_df_lag %>%
 
 ```{r}
 
-
-write.csv(group_df_lag, paste0("Outputs/",hosp,"_",format(Sys.Date(), "%Y%m%d"), "_absences_data.csv"), row.names = FALSE)
+write.csv(group_df_lag, paste0("C:/Users/Fiona/Documents/ECEHH/COVID/Outputs/",params$hospital,"_",format(Sys.Date(), "%Y%m%d"), "_absences_data.csv"), row.names = FALSE)
 
 ```
 
@@ -371,15 +388,25 @@ all_staff_plot_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")& 
   scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
-  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", hosp))+
+  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   theme_bw() +
+  theme(text = element_text(size=20))+
   ylim(0,ymax)
 
+```
 
-#all_staff_plot_cov
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
+
+\newpage
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_All_Staff.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(all_staff_plot_cov)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
 
 ```
 
@@ -396,19 +423,28 @@ all_staff_plot_total <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")
   scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
-  ggtitle(paste0("Staff Numbers Absent (All) - ", hosp))+
+  ggtitle(paste0("Staff Numbers Absent (All) - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   theme_bw() +
+  theme(text = element_text(size=20))+
   ylim(0,ymax)
 
 
 all_staff_plot_cov/all_staff_plot_total
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
+
 
 ```
 
+```{r, echo =FALSE}
 
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_All_Staff.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(all_staff_plot_total)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_All_Staff.png"), width = 30, height = 20, units = "cm")
+```
 
 
 ```{r Proportion plot data preparation}
@@ -439,15 +475,27 @@ all_props_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent due to COVID-19 - ", hosp))+
+  theme(text = element_text(size=20))+
+  ggtitle(paste0("Percentage Staff Absent due to COVID-19 - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   ylim(0,100)
 
 #all_props_cov
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
 
 
+
+```
+
+
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_All_Staff.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(all_props_cov)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
 ```
 
 ```{r Total staff percentage absent}
@@ -467,16 +515,28 @@ all_props_tot <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent (All) - ", hosp))+
+  theme(text = element_text(size=20))+
+  ggtitle(paste0("Percentage Staff Absent (All) - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   ylim(0,100)
 
 #all_props_tot
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
+
 
 all_props_cov/all_props_tot
 
+```
+
+
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_All_Staff.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(all_props_tot)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_All_Staff.png"), width = 30, height = 20, units = "cm")
 ```
 
 ```{r Group plot - covid numbers}
@@ -499,19 +559,31 @@ num_plot_cov <-
   ylab("Number Staff Absent") +
   xlab("Date") +
   theme(legend.title = element_blank()) +
-  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", hosp))+
+  ggtitle(paste0("Staff Numbers Absent due to COVID-19 - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   theme_bw()+
   scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
   scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
+  theme(text = element_text(size=20))+
   scale_size_manual(values = c(1.5,1.5,1,1))+
   ylim(0,ymax)
  
 num_plot_cov
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
 ```
 
+
+
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_Staff_Groups.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(num_plot_cov)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+```
 
 ```{r Group plot all absences}
 
@@ -533,18 +605,28 @@ num_plot_all <-
   scale_color_manual(values = c("#00BFC4",rep("#F8766D", 3))) +
   scale_linetype_manual(values = c("solid", "solid", "dotted", "dotted"))+
   scale_size_manual(values = c(1.5,1.5,1,1))+
-  theme(legend.title = element_blank()) +
-  ggtitle(paste0("Staff Numbers Absent (All) - ", hosp))+
+  theme(legend.title = element_blank())+
+  ggtitle(paste0("Staff Numbers Absent (All) - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   theme_bw() +
+  theme(text = element_text(size=20))+
   ylim(0,ymax)
  
 num_plot_all
 
-ggsave(paste0(out_dir,"/", hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
 
 ```
 
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/", params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_Staff_Groups.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(num_plot_all)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/", params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Numbers_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+```
 
 
 ```{r Group plot percentage staff absent due to COVID}
@@ -560,16 +642,29 @@ prop_plot_cov <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & nam
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent due to COVID-19 - ", hosp))+
+  theme(text = element_text(size=20))+
+  ggtitle(paste0("Percentage Staff Absent due to COVID-19 - ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   ylim(0,100)
 
 
 prop_plot_cov
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
 
 ```
+
+
+```{r, echo = FALSE}
+
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_Staff_Groups.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(prop_plot_cov)
+invisible(dev.off())
+
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+```
+
 
 ```{r Group plot all staff absences}
 
@@ -585,17 +680,27 @@ prop_plot_all <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & nam
   scale_size_manual(values = c(1.5,1.5,1,1))+
   theme(legend.title = element_blank()) +
   theme_bw()+
-  ggtitle(paste0("Percentage Staff Absent (All)- ", hosp))+
+  theme(text = element_text(size=20))+
+  ggtitle(paste0("Percentage Staff Absent (All)- ", params$hospital))+
   labs(color = "", size = "", linetype= "")+
   ylim(0,100)
 
 
 prop_plot_all
 
-ggsave(paste0(out_dir,"/",hosp, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
 
 ```
 
 
+```{r, echo = FALSE}
 
+
+png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_Staff_Groups.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
+print(prop_plot_all)
+invisible(dev.off())
+
+# 
+# ggsave(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_All_Absences_Proportions_Staff_Groups.png"), width = 30, height = 20, units = "cm")
+
+```
 
