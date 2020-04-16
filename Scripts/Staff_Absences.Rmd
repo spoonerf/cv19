@@ -4,12 +4,12 @@ output: pdf_document
 params:
   hospital: "NDDH"
   in_file: "Staff_Absences_NDDH_20200408.xlsx"
-  image_ppi: 1000
   end_date: !r as.Date("2020-04-16")
   in_dir: "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
   out_dir: !r paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
   fig_width: 11.75
   fig_height: 7
+  image_ppi: 1000
 title: "Staff Absences"
 subtitle: "`r params$hospital`"
 ---
@@ -32,23 +32,6 @@ library(tidyr)
 ```
 
 ```{r}
-#hosp <- "RDE" #Name of hospital for plot labels
-
-#in_file <- "Staff_Absences_RDE_20200408.xlsx" #excel file with data
-
-#end_date <- as.Date("2020-04-16")  #End date for projections
-
-#in_dir <- "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
-
-#scen_data <- "Devon_projection.RData" #scenario rates
-
-#out_dir <- paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
-
-#out_dir = here::here("Outputs/")
-
-#fig_width =  11.75
-#fig_height = 7
-
 load(paste0(params$in_dir, "Devon_projection.RData"))
 scen_in <- Devon_projection
 
