@@ -4,6 +4,7 @@ output: pdf_document
 params:
   hospital: "RDE"
   in_file: "Staff_Absences_RDE_20200408.xlsx"
+  plot_start_date: !r as.Date("2020-03-29")
   end_date: !r as.Date("2020-04-29")
   in_dir: "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
   out_dir: !r paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
@@ -158,7 +159,7 @@ colnames(cov_long) <- c("date", "value", "name")
 ```{r, eval = FALSE}
 
 ggplot(cov_long %>% 
-         filter(date > as.Date("2020-03-19")),
+         filter(date > params$plot_start_date),
        aes(
          x = date,
          y = value,
@@ -172,7 +173,7 @@ ggplot(cov_long %>%
   )) +
   geom_point(data = cov_long %>% 
                filter(date <= first_date &
-                      date >as.Date("2020-03-19")),
+                      date > params$plot_start_date),
              col = "black") +
   ggtitle(paste0("Rt for ", params$hospital))+
   scale_size_manual(values = rep(2, length(unique(cov_long$name))))
@@ -394,10 +395,10 @@ all_staff<- data.frame(num_pl_df %>%
 ymax <- ifelse(max(all_staff$value)> staff_num, staff_num, NA)
 
 
-all_staff_plot_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")& name == "cov_lag_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
+all_staff_plot_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_lag_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
  # geom_line(aes(linetype = model)), size = model)) +
   geom_line()+
-  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   ylab("Number Staff Absent")+
   xlab("Date")+
@@ -430,10 +431,10 @@ invisible(dev.off())
 
 ```{r Total staff absences}
 
-all_staff_plot_total <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19")& name == "total_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
+all_staff_plot_total <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "total_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
   geom_line()+
   # geom_line(aes(linetype = model, size = model)) +
-  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "total_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   ylab("Number Staff Absent")+
   xlab("Date")+
@@ -482,10 +483,10 @@ total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
 all_staff$prop_value <- (all_staff$value /total_staff) *100
 
 
-all_props_cov <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name == "cov_lag_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
+all_props_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_lag_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
   geom_line()+
   #geom_line(aes(linetype = model, size = model)) +
-  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
    ylab("Proportion Staff Absent %")+
   xlab("Date")+
@@ -523,10 +524,10 @@ total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
 all_staff$prop_value <- (all_staff$value /total_staff) *100
 
 
-all_props_tot <- ggplot(all_staff %>% filter(date > as.Date("2020-03-19") & name == "total_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
+all_props_tot <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "total_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
   geom_line()+
   # geom_line(aes(linetype = model, size = model)) +
-  geom_point(data = all_staff %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "total_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
    ylab("Proportion Staff Absent %")+
   xlab("Date")+
@@ -565,7 +566,7 @@ ymax <- ifelse(max(num_pl_df$value)> staff_num, staff_num, NA)
 
 num_plot_cov <-
   ggplot(num_pl_df %>% 
-           filter(date > as.Date("2020-03-19") & name == "cov_lag_staff_out"),
+           filter(date > params$plot_start_date & name == "cov_lag_staff_out"),
     aes(
       x = date,
       y = value,
@@ -574,7 +575,7 @@ num_plot_cov <-
   ) +
   geom_line(aes(col = model))+
   # geom_line(aes(col = model, linetype = model, size = model)) +
-  geom_point(data = num_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = num_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap( ~ group) +
   ylab("Number Staff Absent") +
@@ -610,7 +611,7 @@ invisible(dev.off())
 
 num_plot_all <-
   ggplot(num_pl_df %>% 
-           filter(date > as.Date("2020-03-19") & name == "total_staff_out"),
+           filter(date > params$plot_start_date & name == "total_staff_out"),
     aes(
       x = date,
       y = value,
@@ -619,7 +620,7 @@ num_plot_all <-
   ) +
   geom_line(aes(col = model))+
   # geom_line(aes(col = model, linetype = model, size = model)) +
-  geom_point(data = num_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_staff_out") , col = "black") +
+  geom_point(data = num_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "total_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap( ~ group) +
   ylab("Number Staff Absent") +
@@ -652,10 +653,10 @@ invisible(dev.off())
 
 
 ```{r Group plot percentage staff absent due to COVID}
-prop_plot_cov <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & name == "cov_lag_prop"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
+prop_plot_cov <- ggplot(prop_pl_df %>% filter(date > params$plot_start_date & name == "cov_lag_prop"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
   geom_line(aes(col = model))+
   # geom_line(aes(col = model, linetype = model, size = model)) +
-  geom_point(data = prop_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "cov_lag_prop") , col = "black") +
+  geom_point(data = prop_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_prop") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap(~group)+
   ylab("Proportion Staff Absent %")+
@@ -690,10 +691,10 @@ invisible(dev.off())
 
 ```{r Group plot all staff absences}
 
-prop_plot_all <- ggplot(prop_pl_df %>% filter(date > as.Date("2020-03-19") & name == "total_prop_staff_out"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
+prop_plot_all <- ggplot(prop_pl_df %>% filter(date > params$plot_start_date & name == "total_prop_staff_out"),aes(x = date, y = value, col = model, group = interaction(model, group,name)))+
   geom_line(aes(col = model))+
   #geom_line(aes(col = model, linetype = model, size = model)) +
-  geom_point(data = prop_pl_df %>% filter(date > as.Date("2020-03-19") & date <= first_date & name == "total_prop_staff_out") , col = "black") +
+  geom_point(data = prop_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "total_prop_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap(~group)+
   ylab("Proportion Staff Absent %")+
