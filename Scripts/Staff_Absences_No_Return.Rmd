@@ -6,16 +6,14 @@ params:
   in_file: "Staff_Absences_RDE_20200422.xlsx"
   plot_start_date: !r as.Date("2020-03-29")
   end_date: !r as.Date("2020-05-13")
-  include_returners: FALSE
   in_dir: "C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Data_from_Claire/"
-  out_dir: !r paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_",format(Sys.Date(), "%Y%m%d"), "/") 
+  out_dir: !r paste0("C:/Users/Fiona/University of Exeter/COVID19 Modelling - Documents/Staff_Absences/Reports_and_Results/Outputs_No_Return_",format(Sys.Date(), "%Y%m%d"), "/") 
   fig_width: 11.75
   fig_height: 7
   image_ppi: 1000
-title: "Staff Absences"
+title: "Staff Absences - No Returners"
 subtitle: "`r params$hospital`"
 ---
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = params$fig_width, fig.height = params$fig_height)
@@ -36,29 +34,26 @@ library(tidyr)
 
 ```{r}
 Daily_Absences_All_Staff <-
-  read_xlsx(paste0(params$in_dir,
-                   params$in_file),
-            sheet = "Daily_Absences_All_Staff",
-            col_names = TRUE) %>%
-  select(Date, Staff_Absences_Perc, Staff_Absences_Covid_Perc) %>%
-  mutate_if(is.character, as.numeric) %>%
-  mutate(
-    Staff_Absences_Perc = Staff_Absences_Perc / 100,
-    Staff_Absences_Covid_Perc = Staff_Absences_Covid_Perc / 100,
-    Staff_Absences_NoCovid_Perc = Staff_Absences_Perc - Staff_Absences_Covid_Perc,
-    Date = as.Date(Date)
-  ) %>%
-  select(Date,
-         Staff_Absences_Perc,
-         Staff_Absences_Covid_Perc,
-         Staff_Absences_NoCovid_Perc)
+  read_xlsx(paste0(
+    params$in_dir,
+    params$in_file
+  ),
+    sheet = "Daily_Absences_All_Staff",
+    col_names = TRUE
+  ) %>% 
+  select(Date, Staff_Absences_Perc, Staff_Absences_Covid_Perc) %>% 
+  mutate_if(is.character, as.numeric) %>% 
+  mutate(Staff_Absences_Perc = Staff_Absences_Perc/100, 
+         Staff_Absences_Covid_Perc = Staff_Absences_Covid_Perc/100,
+         Staff_Absences_NoCovid_Perc = Staff_Absences_Perc - Staff_Absences_Covid_Perc, 
+         Date = as.Date(Date)) %>% 
+  select(Date, Staff_Absences_Perc, Staff_Absences_Covid_Perc, Staff_Absences_NoCovid_Perc)
 
 ```
 
 ```{r}
 
 first_date <- as.Date(max(Daily_Absences_All_Staff$Date))
-
 
 ```
 
@@ -106,17 +101,12 @@ We use these curves to predict future day-to-day increases in the staff absences
 
 Assumptions:
 
-`r if(params$hospital == "NDDH"){paste0("Daily ", params$hospital, " COVID-19 related absences have declined from ", Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-05")]*100, "% on ", as.Date("2020-04-05"), " to ",Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-21")]*100, "% on ", as.Date("2020-04-21"),".")}`
+`r if(params$hospital == "NDDH"){paste0("Daily ", params$hospital, " COVID-19 related absences have declined from ", Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-07")]*100, "% on ", as.Date("2020-04-07"), " to ",Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-21")]*100, "% on ", as.Date("2020-04-21"),".")}`
 
-`r if(params$hospital == "RDE"){paste0("Daily ", params$hospital, " COVID-19 related absences have declined from ", Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-05")]*100, "% on ", as.Date("2020-04-05"), " to ",Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-21")]*100, "% on ", as.Date("2020-04-21"),".")}`
-
-`r if(params$hospital == "RDE"){"Daily RDE absence data for Covid-19 only, total absences are calculated by incorporating historical absences (average of same period in 2018 and 2019: 4%)."}`
+`r if(params$hospital == "RDE"){paste0("Daily ", params$hospital, " COVID-19 related absences have declined from ", Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-07")]*100, "% on ", as.Date("2020-04-07"), " to ",Daily_Absences_All_Staff$Staff_Absences_Covid_Perc[Daily_Absences_All_Staff$Date == as.Date("2020-04-21")]*100, "% on ", as.Date("2020-04-21"),".")}`
 
 
 Absence by staff group based on data from April 21st
-
-We assume that staff will return to work after an absence of 14 days, this can be seen in the plots below.
-
 
 ```{r, eval = FALSE}
 # ######delete when real data is available - just continuing last available point of real data forwards until april 16th - will replace when data is available
@@ -127,6 +117,7 @@ We assume that staff will return to work after an absence of 14 days, this can b
 # Daily_Absences_All_Staff <-  rbind(Daily_Absences_All_Staff, dummy_df)
 
 ```
+
 
 
 ```{r Scenario Scaling Function}
@@ -148,6 +139,8 @@ scenario_scaler <- function(scenario_name, name_out,real_data, start_date_model,
 }
 
 ```
+
+
 
 
 ```{r Scaling scenarios}
@@ -357,7 +350,7 @@ lag <- 14
 
 group_df_lag <- group_df %>%
   group_by(group, model) %>%
-  mutate(nrows = n(),
+  mutate( nrows = n(),
         end_lag = nrows[1] - lag ,
     diff_staff_cov = c(NA, diff(cov_staff_out)),
     cov_staff_return_day = ifelse(nrows >= lag, c(rep(0, lag), diff_staff_cov[1:end_lag]), 0))
@@ -376,13 +369,13 @@ uniform_ret <- group_df_lag %>%
    select(group, uniform_return) %>% 
    distinct()
 
-dates <- seq(first_date + 1, first_date+lag, by = "day")
+dates <- seq(first_date + 1, first_date+14, by = "day")
 groups <- rep(uniform_ret$group, each = length(dates))
 
 df <- data.frame(date = dates, group = groups)
 dfu <- merge(df, uniform_ret)
 
-dft <- merge(group_df_lag, dfu,by = c("group", "date"), all = TRUE)
+dft <- merge(group_df_lag, dfu, all = TRUE)
 
 group_df_lag <- dft
 
@@ -397,12 +390,25 @@ group_df_lag <- group_df_lag %>%
 ```
 
 ```{r}
+# dates <- rep(seq(min(group_df_lag$date), max(group_df_lag$date), by = "day"),nrow(uniform)*length(scenarios))
+# 
+# df <- data.frame(group = groups, date = dates)
+# dfu <- merge(df, uniform )
+# 
+# dfu$uniform_return[dfu$date <= first_date | dfu$date >= first_date+ 13] <- 0
+# 
+# group_df_lag<- unique(merge(dfu, group_df_lag, by = c("group", "date")))
+# 
+# 
+# group_df_lag$cov_staff_return <- group_df_lag$cov_staff_return + group_df_lag$uniform_return
 
-group_df_lag$cov_lag_staff_out <- group_df_lag$cov_staff_out - group_df_lag$cov_staff_return
+###############
 
-group_df_lag$cov_lag_prop <- (group_df_lag$cov_lag_staff_out / group_df_lag$num_staff) * 100
+#group_df_lag$cov_staff_out <- group_df_lag$cov_staff_out - group_df_lag$cov_staff_return
 
-group_df_lag$total_staff_out <- group_df_lag$cov_lag_staff_out + group_df_lag$no_cov_staff_out
+group_df_lag$cov_lag_prop <- (group_df_lag$cov_staff_out / group_df_lag$num_staff) * 100
+
+group_df_lag$total_staff_out <- group_df_lag$cov_staff_out + group_df_lag$no_cov_staff_out
 
 group_df_lag$total_prop_staff_out <- (group_df_lag$total_staff_out / group_df_lag$num_staff) * 100
 
@@ -412,7 +418,7 @@ group_df_lag <- group_df_lag %>%
     group,
     model,
     cov_staff_out,
-    cov_lag_staff_out,
+    cov_staff_out,
     cov_staff_return,
     no_cov_staff_out,
     total_staff_out,
@@ -426,7 +432,7 @@ group_df_lag <- group_df_lag %>%
 ```
 
 
-```{r}
+```{r, eval = FALSE}
 
 write.csv(group_df_lag, paste0(params$out_dir,"/",params$hospital,"_",format(Sys.Date(), "%Y%m%d"), "_absences_data.csv"), row.names = FALSE)
 
@@ -435,8 +441,8 @@ write.csv(group_df_lag, paste0(params$out_dir,"/",params$hospital,"_",format(Sys
 
 ```{r Date for group plots}
 num_pl_df <- data.frame(group_df_lag %>% 
-  select(date, group, model,total_staff_out, cov_lag_staff_out) %>% 
-  pivot_longer(., cols = c("total_staff_out", "cov_lag_staff_out"))) %>% mutate(model = factor(model, levels = scenarios))
+  select(date, group, model,total_staff_out, cov_staff_out) %>% 
+  pivot_longer(., cols = c("total_staff_out", "cov_staff_out"))) %>% mutate(model = factor(model, levels = scenarios))
 
 ```
 
@@ -457,10 +463,10 @@ all_staff<- data.frame(num_pl_df %>%
 ymax <- ifelse(max(all_staff$value)> staff_num, staff_num, NA)
 
 
-all_staff_plot_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_lag_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
+all_staff_plot_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_staff_out"),aes(x = date, y = value, col = model, group = interaction(model,name)))+
  # geom_line(aes(linetype = model)), size = model)) +
   geom_line(size = 1)+
-  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   ylab("Number Staff Absent")+
   xlab("Date")+
@@ -482,6 +488,7 @@ all_staff_plot_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date 
 
 \newpage
 ```{r, echo = FALSE}
+
 
 png(paste0(params$out_dir,"/",params$hospital, "_",format(Sys.Date(), "%Y%m%d"),"_COVID_Absences_Numbers_All_Staff.png"), width = params$fig_width, height = params$fig_height, units = "in",res = params$image_ppi)
 print(all_staff_plot_cov)
@@ -548,10 +555,10 @@ total_staff <- sum(Number_Staff_By_Group$Number_Staff[1:8])
 all_staff$prop_value <- (all_staff$value /total_staff) *100
 
 
-all_props_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_lag_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
+all_props_cov <- ggplot(all_staff %>% filter(date > params$plot_start_date & name == "cov_staff_out"),aes(x = date, y = prop_value, col = model, group = interaction(model, name)))+
   geom_line(size = 1)+
   #geom_line(aes(linetype = model, size = model)) +
-  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = all_staff %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
    ylab("Proportion Staff Absent %")+
   xlab("Date")+
@@ -635,7 +642,7 @@ ymax <- ifelse(max(num_pl_df$value)> staff_num, staff_num, NA)
 
 num_plot_cov <-
   ggplot(num_pl_df %>% 
-           filter(date > params$plot_start_date & name == "cov_lag_staff_out"),
+           filter(date > params$plot_start_date & name == "cov_staff_out"),
     aes(
       x = date,
       y = value,
@@ -644,7 +651,7 @@ num_plot_cov <-
   ) +
   geom_line(aes(col = model))+
   # geom_line(aes(col = model, linetype = model, size = model)) +
-  geom_point(data = num_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_lag_staff_out") , col = "black") +
+  geom_point(data = num_pl_df %>% filter(date > params$plot_start_date & date <= first_date & name == "cov_staff_out") , col = "black") +
   geom_vline(xintercept = first_date, linetype = "dotted") +
   facet_wrap( ~ group) +
   ylab("Number Staff Absent") +
